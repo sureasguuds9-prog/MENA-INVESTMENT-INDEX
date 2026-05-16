@@ -119,6 +119,35 @@ def register_callbacks(app):
             for ticker, info in TICKERS.items()
         ]
 
+    # ── M7: News — обновление ленты при фильтрах и интервале ─────────────────
+    @app.callback(
+        Output("news-feed-content", "children"),
+        Output("news-stats-bar", "children"),
+        Output("news-last-updated", "children"),
+        Input("news-country-filter", "value"),
+        Input("news-impact-filter", "value"),
+        Input("news-refresh-interval", "n_intervals"),
+    )
+    def update_news_feed(country_filter, impact_filter, _):
+        from src.dashboard.news_feed import fetch_all_news
+        from src.dashboard.layouts.news import make_news_card, make_stats_bar
+        from datetime import datetime
+
+        articles = fetch_all_news(country_filter=country_filter or "ALL")
+
+        # Фильтр «только ключевые»
+        if impact_filter and "moving" in impact_filter:
+            articles = [a for a in articles if a.get("is_market_moving")]
+
+        cards = [make_news_card(a) for a in articles]
+        if not cards:
+            from dash import html
+            cards = [html.P("Нет новостей по выбранным фильтрам", className="text-muted p-3")]
+
+        stats = make_stats_bar(articles)
+        updated = f"Обновлено: {datetime.now().strftime('%d %b %Y, %H:%M:%S')}"
+        return cards, stats, updated
+
 
 def _register_preset_callback(app, preset_key: str, slider_ids: list[str]):
     from src.dashboard.layouts.weights import PRESETS

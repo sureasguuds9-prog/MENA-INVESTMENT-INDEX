@@ -13,7 +13,7 @@ import dash
 import dash_bootstrap_components as dbc
 from dash import html, dcc
 
-from src.dashboard.layouts import scorecard, ranking, map_view, weights, markets
+from src.dashboard.layouts import scorecard, ranking, map_view, weights, markets, news
 from src.dashboard.callbacks.main_callbacks import register_callbacks
 
 # ── Инициализация ──────────────────────────────────────────────────────────────
@@ -77,6 +77,11 @@ app.layout = html.Div([
                 markets.layout(),
                 label="📈 Рынки",
                 tab_id="tab-markets",
+            ),
+            dbc.Tab(
+                news.layout(),
+                label="📰 Новости",
+                tab_id="tab-news",
             ),
         ],
         id="main-tabs",
