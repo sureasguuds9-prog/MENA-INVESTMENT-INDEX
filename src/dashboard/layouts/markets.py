@@ -24,15 +24,12 @@ def _hex_to_rgba(hex_color: str, alpha: float = 1.0) -> str:
     return f"rgba({r},{g},{b},{alpha})"
 
 
-def make_price_card(ticker: str, info: dict, price_data: dict) -> dbc.Card:
-    """Карточка с текущей ценой тикера."""
+def make_price_card(ticker: str, info: dict, price_data: dict) -> dbc.Col:
     p = price_data.get(ticker, {"price": 0, "change_pct": 0, "error": True})
     price = p["price"]
     chg   = p["change_pct"]
-    color = "#2ecc71" if chg >= 0 else "#e74c3c"
-    arrow = "▲" if chg >= 0 else "▼"
+    up    = chg >= 0
 
-    # Форматируем цену
     if ticker in ("EURUSD=X", "DX-Y.NYB"):
         price_str = f"{price:.4f}"
     elif price > 1000:
@@ -40,24 +37,25 @@ def make_price_card(ticker: str, info: dict, price_data: dict) -> dbc.Card:
     else:
         price_str = f"${price:.2f}"
 
-    return dbc.Card([
-        dbc.CardBody([
-            html.Div([
-                html.Span(info["emoji"], style={"fontSize": "1.5rem"}),
-                html.Span(info["label"], className="ms-2 text-muted small"),
-            ], className="d-flex align-items-center mb-1"),
-            html.H4(price_str, className="mb-0 fw-bold",
-                    style={"color": info["color"], "fontFamily": "monospace"}),
-            html.Small(
-                f"{arrow} {abs(chg):.2f}% за день",
-                style={"color": color},
-            ),
-        ], className="p-2"),
-    ], style={
-        "backgroundColor": "#161b22",
-        "border": f"1px solid {info['color']}33",
-        "borderLeft": f"3px solid {info['color']}",
-    }, className="mb-2")
+    color = info["color"]
+    delta_cls = "up" if up else "down"
+    arrow = "▲" if up else "▼"
+
+    return dbc.Col(html.Div([
+        html.Div(style={
+            "position": "absolute", "top": 0, "left": 0, "right": 0, "height": "2px",
+            "background": color, "boxShadow": f"0 0 8px {color}", "opacity": "0.7",
+        }),
+        html.Div([
+            html.Span(f"{info['emoji']} {ticker}", className="t-market-cell-key",
+                      style={"color": color, "textShadow": f"0 0 6px {color}"}),
+            html.Span(f"{arrow} {abs(chg):.2f}%", className=f"t-market-cell-delta {delta_cls}"),
+        ], style={"display": "flex", "justifyContent": "space-between", "alignItems": "center"}),
+        html.Div(price_str, className="t-market-cell-price",
+                 style={"textShadow": f"0 0 10px {color}55"}),
+        html.Div(info["label"], style={"fontFamily": "var(--mono)", "fontSize": "9px",
+                                        "color": "var(--text-dim)", "letterSpacing": "1.5px", "marginTop": "2px"}),
+    ], className="t-market-cell", style={"position": "relative"}), width=12, md=6, lg=True)
 
 
 def make_compare_figure(data: dict, interval_label: str = "") -> go.Figure:
@@ -186,7 +184,7 @@ def layout() -> html.Div:
         # ── Карточки с текущими ценами ─────────────────────────────────────────
         dbc.Row(
             id="markets-price-cards",
-            children=[dbc.Col(make_price_card(ticker, info, prices), width=12, md=6, lg=True)
+            children=[make_price_card(ticker, info, prices)
                       for ticker, info in TICKERS.items()],
             className="g-2 mb-3",
         ),

@@ -57,91 +57,32 @@ def make_country_flags(countries: list[str]) -> html.Span:
     return html.Span(flags, style={"fontSize": "14px"})
 
 
-def make_news_card(article: dict) -> dbc.Card:
-    """Рендерит карточку новости. Подсвечивает market-moving новости."""
+def make_news_card(article: dict) -> html.Div:
     impact_type = article.get("impact_type")
     is_moving   = article.get("is_market_moving", False)
-    cfg = IMPACT_COLORS.get(impact_type, {})
 
-    # Стили карточки
+    moving_cls = ""
     if is_moving:
-        card_style = {
-            "backgroundColor": cfg.get("bg", "#161b22"),
-            "borderLeft":      f"4px solid {cfg.get('border', '#555')}",
-            "border":          f"1px solid {cfg.get('border', '#333')}33",
-            "marginBottom":    "10px",
-        }
-    else:
-        card_style = {
-            "backgroundColor": "#161b22",
-            "borderLeft":      "4px solid #2a3a4a",
-            "border":          "1px solid #222",
-            "marginBottom":    "8px",
-        }
+        moving_cls = {"danger": "moving", "warning": "moving warning", "success": "moving success", "info": "moving info"}.get(impact_type, "moving")
 
-    # Лейбл источника
-    source_badge = dbc.Badge(
-        article["source_logo"],
-        style={
-            "backgroundColor": article["source_color"],
-            "fontSize": "10px",
-            "marginRight": "6px",
-        },
-    )
+    cats = article.get("categories", [])
+    tag_cat = cats[0] if cats else "info"
+    tag_label = {"oil": "ENERGY", "conflict": "CONFLICT", "economy": "ECONOMY", "politics": "POLICY", "nuclear": "NUCLEAR"}.get(tag_cat, "NEWS")
 
-    # Категорийные теги
-    category_badges = html.Span([
-        make_category_badge(c) for c in article.get("categories", [])[:3]
-    ])
+    impact_label = article.get("impact_label", "")
+    display_tag = f"⚡ {impact_label}" if is_moving and impact_label else tag_label
 
-    # Impact badge (только для market-moving)
-    impact_el = html.Span()
-    if is_moving and article.get("impact_label"):
-        impact_el = make_impact_badge(impact_type, article["impact_label"])
-
-    # Флаги стран
-    flags_el = make_country_flags(article.get("countries", []))
-
-    return dbc.Card(
-        dbc.CardBody([
-            # Шапка: источник + дата + флаги
-            html.Div([
-                source_badge,
-                html.Span(article["pub_str"],
-                          className="text-muted",
-                          style={"fontSize": "11px"}),
-                html.Span(flags_el, className="ms-2"),
-                html.Span(impact_el, className="ms-auto float-end"),
-            ], className="d-flex align-items-center mb-1 flex-wrap"),
-
-            # Заголовок — кликабельная ссылка
-            html.A(
-                article["title"],
-                href=article["url"],
-                target="_blank",
-                style={
-                    "color": cfg.get("border", "#e0e0e0") if is_moving else "#d0d0d0",
-                    "fontWeight": "600" if is_moving else "400",
-                    "fontSize": "13px",
-                    "textDecoration": "none",
-                    "lineHeight": "1.4",
-                },
-                className="d-block mb-1",
+    return html.Div([
+        html.Span(article["pub_str"], className="t-feed-time"),
+        html.Span(display_tag, className=f"t-feed-tag {tag_cat}"),
+        html.Div([
+            html.A(article["title"], href=article["url"], target="_blank", className="t-feed-txt"),
+            html.Div(
+                " ".join(FLAG_EMOJI.get(c, "") for c in article.get("countries", [])[:3]),
+                style={"fontSize": "12px", "marginTop": "2px"},
             ),
-
-            # Описание
-            html.P(
-                article.get("description", ""),
-                className="text-muted mb-1",
-                style={"fontSize": "11px", "lineHeight": "1.4"},
-            ),
-
-            # Теги
-            html.Div([category_badges], className="mt-1"),
-
-        ], className="py-2 px-3"),
-        style=card_style,
-    )
+        ]),
+    ], className=f"t-feed-item {moving_cls}")
 
 
 def make_impact_legend() -> dbc.Card:
