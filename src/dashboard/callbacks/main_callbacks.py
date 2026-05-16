@@ -80,6 +80,45 @@ def register_callbacks(app):
     for preset_key in PRESETS:
         _register_preset_callback(app, preset_key, weight_slider_ids)
 
+    # ── M6: Markets — сравнительный график ────────────────────────────────────
+    @app.callback(
+        Output("compare-chart", "figure"),
+        Output("markets-last-updated", "children"),
+        Input("compare-ticker-checklist", "value"),
+        Input("compare-interval-selector", "value"),
+        Input("markets-refresh-btn", "n_clicks"),
+    )
+    def update_compare_chart(tickers, interval_range, _):
+        from src.dashboard.market_data import fetch_compare_data
+        from src.dashboard.layouts.markets import make_compare_figure
+        from datetime import datetime
+
+        if not tickers:
+            tickers = ["BTC-USD", "CL=F"]
+
+        interval, range_ = (interval_range or "1d|1mo").split("|")
+        data = fetch_compare_data(tickers, interval, range_)
+        fig = make_compare_figure(data)
+
+        updated = f"Обновлено: {datetime.now().strftime('%d %b %Y, %H:%M:%S')}"
+        return fig, updated
+
+    # ── M6: Markets — кнопка обновить перезагружает карточки цен ─────────────
+    @app.callback(
+        Output("markets-price-cards", "children"),
+        Input("markets-refresh-btn", "n_clicks"),
+    )
+    def refresh_price_cards(_):
+        from src.dashboard.market_data import fetch_all_prices, TICKERS
+        from src.dashboard.layouts.markets import make_price_card
+        import dash_bootstrap_components as dbc
+
+        prices = fetch_all_prices()
+        return [
+            dbc.Col(make_price_card(ticker, info, prices), width=12, md=6, lg=True)
+            for ticker, info in TICKERS.items()
+        ]
+
 
 def _register_preset_callback(app, preset_key: str, slider_ids: list[str]):
     from src.dashboard.layouts.weights import PRESETS
