@@ -11,62 +11,121 @@ from src.dashboard.data_loader import (
 from src.model.build_panel import FACTOR_COLS
 
 
-def build_ranking_table_data(year: int | None = None) -> tuple[list[dict], list[dict]]:
-    """Готовит данные и колонки для dash_table."""
+def _score_color(score: float) -> str:
+    if score >= 70:   return "#5cffb1"
+    elif score >= 50: return "#f7c548"
+    elif score >= 30: return "#ff9a3d"
+    else:             return "#ff3d6b"
+
+
+def _tier(score: float) -> str:
+    if score >= 70:   return "FRONTIER"
+    elif score >= 50: return "EMERGING"
+    elif score >= 30: return "DEVELOPING"
+    else:             return "DISTRESSED"
+
+
+def build_ranking_rows(year: int | None = None) -> list[dict]:
     df = load_ranking(year)
     mc = load_monte_carlo()
-
-    # Добавляем CI из Monte Carlo
     if not mc.empty:
-        df = df.merge(
-            mc[["iso3", "ci_lower_95", "ci_upper_95", "std_score"]],
-            on="iso3", how="left"
-        )
+        df = df.merge(mc[["iso3", "ci_lower_95", "ci_upper_95"]], on="iso3", how="left")
 
     rows = []
-    for _, row in df.iterrows():
-        flag = FLAG_EMOJI.get(row["iso3"], "")
-        ci_str = (
-            f"[{row['ci_lower_95']:.0f}–{row['ci_upper_95']:.0f}]"
-            if "ci_lower_95" in row and pd.notna(row.get("ci_lower_95"))
-            else "—"
-        )
-        rec = {
-            "#":       int(row["cici_rank"]),
-            "Страна":  f"{flag} {row['country']}",
-            "CICI":    f"{row['cici_score']:.1f}",
-            "95% CI":  ci_str,
-        }
+    for _, row in df.sort_values("cici_rank").iterrows():
+        flag  = FLAG_EMOJI.get(row["iso3"], "")
+        score = float(row["cici_score"])
+        rank  = int(row["cici_rank"])
+        color = _score_color(score)
+        tier  = _tier(score)
+
+        ci_str = ""
+        if "ci_lower_95" in row and pd.notna(row.get("ci_lower_95")):
+            ci_str = f"[{row['ci_lower_95']:.0f}–{row['ci_upper_95']:.0f}]"
+
+        factor_spans = []
         for f in FACTOR_COLS:
-            if f in row and pd.notna(row[f]):
-                rec[FACTOR_LABELS.get(f, f)] = f"{row[f]:.0f}"
-            else:
-                rec[FACTOR_LABELS.get(f, f)] = "—"
-        rows.append(rec)
+            val = row.get(f)
+            if pd.notna(val):
+                fc = _score_color(float(val))
+                factor_spans.append(html.Div([
+                    html.Span(FACTOR_LABELS.get(f, f)[:3].upper(),
+                              style={"fontFamily": "var(--mono)", "fontSize": "8px",
+                                     "color": "var(--text-dim)", "letterSpacing": "1px",
+                                     "display": "block"}),
+                    html.Span(f"{val:.0f}", style={"color": fc, "fontFamily": "var(--mono)",
+                                                    "fontSize": "13px", "fontWeight": "700"}),
+                ], style={"textAlign": "center", "minWidth": "36px"}))
 
-    columns = [
-        {"name": "#",      "id": "#",      "type": "numeric"},
-        {"name": "Страна", "id": "Страна"},
-        {"name": "CICI",   "id": "CICI",   "type": "numeric"},
-        {"name": "95% CI", "id": "95% CI"},
-    ] + [
-        {"name": FACTOR_LABELS.get(f, f), "id": FACTOR_LABELS.get(f, f), "type": "numeric"}
-        for f in FACTOR_COLS
-    ]
+        rows.append(html.Div([
+            # Rank badge
+            html.Div(f"#{rank:02d}", style={
+                "fontFamily": "var(--mono)", "fontWeight": "700", "fontSize": "18px",
+                "color": color if rank <= 5 else ("var(--text-dim)" if rank >= 15 else "var(--text-mute)"),
+                "minWidth": "48px", "textAlign": "center", "flexShrink": "0",
+            }),
+            # Flag + country
+            html.Div([
+                html.Div(f"{flag} {row['country']}", style={
+                    "fontFamily": "var(--display)", "fontWeight": "600",
+                    "fontSize": "14px", "color": "var(--text)",
+                }),
+                html.Div(row["iso3"], style={
+                    "fontFamily": "var(--mono)", "fontSize": "9px",
+                    "color": "var(--gold)", "letterSpacing": "3px", "marginTop": "2px",
+                }),
+            ], style={"flex": "1", "minWidth": "140px"}),
+            # Score
+            html.Div([
+                html.Span(f"{score:.1f}", style={
+                    "fontFamily": "var(--display)", "fontWeight": "700",
+                    "fontSize": "22px", "color": color,
+                    "textShadow": f"0 0 10px {color}66",
+                }),
+                html.Div(tier, style={
+                    "fontFamily": "var(--mono)", "fontSize": "8px",
+                    "color": color, "letterSpacing": "2px", "marginTop": "2px",
+                    "border": f"1px solid {color}66", "padding": "1px 5px",
+                    "display": "inline-block",
+                }),
+                html.Div(ci_str, style={
+                    "fontFamily": "var(--mono)", "fontSize": "8px",
+                    "color": "var(--text-dim)", "marginTop": "3px",
+                }) if ci_str else html.Span(),
+            ], style={"textAlign": "right", "minWidth": "90px", "flexShrink": "0"}),
+            # Factor bars
+            html.Div(factor_spans, style={
+                "display": "flex", "gap": "8px", "alignItems": "center",
+                "flexWrap": "wrap", "justifyContent": "flex-end", "flex": "2",
+            }),
+        ], style={
+            "display": "flex", "alignItems": "center", "gap": "16px",
+            "padding": "10px 16px",
+            "borderBottom": "1px solid rgba(247,197,72,0.07)",
+            "background": ("rgba(92,255,177,0.04)" if rank <= 5
+                           else "rgba(255,61,107,0.04)" if rank >= 15 else "transparent"),
+            "transition": "background 0.15s",
+        }, className="t-rank-row"))
 
-    return rows, columns
+    return rows
 
 
 def layout() -> html.Div:
     years = get_available_years()
-    rows, columns = build_ranking_table_data()
 
     return html.Div([
         dbc.Row([
             dbc.Col([
-                html.H4("Рейтинг стран MENA", className="fw-bold mb-1"),
-                html.P("Composite Investment Climate Index (CICI) — 0–100, выше = лучше",
-                       className="text-muted small mb-3"),
+                html.Div("◆ COUNTRY RANKING", style={
+                    "fontFamily": "var(--display)", "fontWeight": "700",
+                    "fontSize": "13px", "letterSpacing": "3px",
+                    "color": "var(--gold)", "textTransform": "uppercase",
+                    "marginBottom": "4px",
+                }),
+                html.Div("Composite Investment Climate Index · 0–100, higher = better", style={
+                    "fontFamily": "var(--mono)", "fontSize": "9px",
+                    "color": "var(--text-dim)", "letterSpacing": "2px",
+                }),
             ], width=8),
             dbc.Col([
                 dcc.Dropdown(
@@ -74,54 +133,30 @@ def layout() -> html.Div:
                     options=[{"label": str(y), "value": y} for y in reversed(years)],
                     value=years[-1],
                     clearable=False,
-                    className="mb-3",
+                    className="mb-2",
                 )
             ], width=4),
-        ]),
+        ], className="mb-3 mt-2"),
 
-        dash_table.DataTable(
-            id="ranking-table",
-            columns=columns,
-            data=rows,
-            sort_action="native",
-            filter_action="native",
-            page_size=19,
-            style_table={"overflowX": "auto"},
-            style_header={
-                "backgroundColor": "#1a1a2e",
-                "color": "white",
-                "fontWeight": "bold",
-                "fontSize": "13px",
-                "border": "1px solid #333",
-            },
-            style_cell={
-                "backgroundColor": "#16213e",
-                "color": "#e0e0e0",
-                "fontSize": "13px",
-                "padding": "8px 12px",
-                "border": "1px solid #2a2a4a",
-                "fontFamily": "monospace",
-            },
-            style_data_conditional=[
-                # Топ-5 — выделяем зелёным
-                {"if": {"filter_query": "{#} <= 5"}, "backgroundColor": "#0d3b2e", "color": "#7fffb0"},
-                # Последние 5 — выделяем красным
-                {"if": {"filter_query": "{#} >= 15"}, "backgroundColor": "#3b0d0d", "color": "#ff9999"},
-                # Чередование строк
-                {"if": {"row_index": "odd"}, "backgroundColor": "#1a2a4a"},
-            ],
-            style_cell_conditional=[
-                {"if": {"column_id": "#"},      "width": "40px", "textAlign": "center"},
-                {"if": {"column_id": "CICI"},   "fontWeight": "bold", "color": "#ffd700"},
-                {"if": {"column_id": "95% CI"}, "fontSize": "11px", "color": "#aaa"},
-            ],
-        ),
+        html.Div([
+            html.Div(className="t-panel-corner t-panel-corner-tl"),
+            html.Div(className="t-panel-corner t-panel-corner-tr"),
+            html.Div(className="t-panel-corner t-panel-corner-bl"),
+            html.Div(className="t-panel-corner t-panel-corner-br"),
+            html.Div([
+                html.Span("[ RANKING TABLE ]", className="t-panel-title"),
+                html.Span("sort by CICI score", style={"fontFamily": "var(--mono)", "fontSize": "9px", "color": "var(--text-dim)"}),
+            ], className="t-panel-head"),
+            html.Div(
+                html.Div(id="ranking-rows-container", children=build_ranking_rows()),
+                className="t-panel-body", style={"padding": "0"},
+            ),
+        ], className="t-panel"),
 
-        dbc.Row([
-            dbc.Col(html.Small([
-                "🟢 Топ-5  ",
-                html.Span("🔴 Аутсайдеры (15–19)  ", className="ms-2"),
-                html.Span("Сортировка: клик по заголовку колонки", className="ms-2 text-muted"),
-            ], className="text-muted mt-2")),
-        ]),
+        html.Div([
+            html.Span("◉ FRONTIER ≥70  ", style={"color": "#5cffb1", "fontFamily": "var(--mono)", "fontSize": "10px"}),
+            html.Span("◉ EMERGING ≥50  ", style={"color": "#f7c548", "fontFamily": "var(--mono)", "fontSize": "10px"}),
+            html.Span("◉ DEVELOPING ≥30  ", style={"color": "#ff9a3d", "fontFamily": "var(--mono)", "fontSize": "10px"}),
+            html.Span("◉ DISTRESSED <30", style={"color": "#ff3d6b", "fontFamily": "var(--mono)", "fontSize": "10px"}),
+        ], style={"marginTop": "12px", "paddingLeft": "4px"}),
     ], className="p-3")

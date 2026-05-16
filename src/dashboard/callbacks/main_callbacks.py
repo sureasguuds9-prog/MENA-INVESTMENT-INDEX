@@ -20,14 +20,12 @@ def register_callbacks(app):
 
     # ── M2: Ranking — обновление при смене года ────────────────────────────────
     @app.callback(
-        Output("ranking-table", "data"),
-        Output("ranking-table", "columns"),
+        Output("ranking-rows-container", "children"),
         Input("ranking-year-selector", "value"),
     )
     def update_ranking(year: int):
-        from src.dashboard.layouts.ranking import build_ranking_table_data
-        rows, cols = build_ranking_table_data(year)
-        return rows, cols
+        from src.dashboard.layouts.ranking import build_ranking_rows
+        return build_ranking_rows(year)
 
     # ── M4: Map — обновление при смене года или индикатора ────────────────────
     @app.callback(
