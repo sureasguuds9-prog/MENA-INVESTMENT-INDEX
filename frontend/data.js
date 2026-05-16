@@ -1,5 +1,5 @@
 // Auto-generated from MENA-Investment-Index model data
-// Generated: 2026-05-16 11:39 UTC
+// Generated: 2026-05-16 12:22 UTC
 window.MENA_DATA = {
   "regions": [
     {
@@ -1899,7 +1899,7 @@ window.MENA_DATA = {
     }
   },
   "meta": {
-    "generated": "2026-05-16 11:39 UTC",
+    "generated": "2026-05-16 12:22 UTC",
     "source": "MENA-Investment-Index · World Bank · IMF · WGI",
     "countries": 19
   }

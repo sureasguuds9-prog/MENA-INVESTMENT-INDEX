@@ -11,6 +11,7 @@ from dash import html, dcc, Input, Output
 from datetime import datetime, timezone
 
 from src.dashboard.layouts import scorecard, ranking, map_view, weights, markets, news
+from src.dashboard.layouts import correlation
 from src.dashboard.callbacks.main_callbacks import register_callbacks
 
 TERMINAL_CSS = """
@@ -282,6 +283,24 @@ body::before {
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.4} }
 ::selection { background: rgba(247,197,72,0.35); color: #0a0e1c; }
 
+/* LIVE TICKER */
+.live-ticker {
+  display: flex; gap: 0; align-items: center;
+  padding: 6px 16px;
+  background: rgba(12,16,28,0.8);
+  border-top: 1px solid rgba(247,197,72,0.15);
+  border-bottom: 1px solid rgba(247,197,72,0.15);
+  overflow-x: auto; white-space: nowrap;
+  scrollbar-width: none;
+  font-family: var(--mono); font-size: 11px;
+  margin-bottom: 0;
+}
+.live-ticker::-webkit-scrollbar { display: none; }
+.ticker-item { display: inline-flex; align-items: center; gap: 5px; padding: 0 12px; }
+.ticker-item .t-up { color: #5cffb1; }
+.ticker-item .t-dn { color: #ff3d6b; }
+.ticker-item .t-nt { color: rgba(233,228,210,0.4); }
+
 /* Dash overrides */
 .container-fluid { position: relative; z-index: 1; }
 .nav-tabs { flex-wrap: nowrap; overflow-x: auto; }
@@ -347,21 +366,43 @@ header = html.Div([
     ], className="term-right"),
 ], className="term-header")
 
+# ── Live Ticker ──────────────────────────────────────────────────────────────
+live_ticker_bar = html.Div(
+    id="live-cici-ticker",
+    className="live-ticker",
+    children=[
+        html.Span("⟳ LIVE CICI", style={
+            "fontFamily": "var(--display)",
+            "fontSize": "9px",
+            "letterSpacing": "2.5px",
+            "color": "rgba(247,197,72,0.5)",
+            "paddingRight": "16px",
+            "flexShrink": "0",
+        }),
+        html.Span("Loading market data…", style={"color": "rgba(233,228,210,0.3)", "fontSize": "10px"}),
+    ],
+)
+
 # ── Tabs ────────────────────────────────────────────────────────────────────
 app.layout = html.Div([
     header,
+    live_ticker_bar,
     dbc.Container([
         dbc.Tabs([
-            dbc.Tab(scorecard.layout(), label="◆ SCORECARD", tab_id="tab-scorecard"),
-            dbc.Tab(ranking.layout(),   label="▲ RANKING",   tab_id="tab-ranking"),
-            dbc.Tab(map_view.layout(),  label="◉ MAP",       tab_id="tab-map"),
-            dbc.Tab(weights.layout(),   label="⚖ WEIGHTS",   tab_id="tab-weights"),
-            dbc.Tab(markets.layout(),   label="∿ MARKETS",   tab_id="tab-markets"),
-            dbc.Tab(news.layout(),      label="◈ NEWS",      tab_id="tab-news"),
+            dbc.Tab(scorecard.layout(),    label="◆ SCORECARD",   tab_id="tab-scorecard"),
+            dbc.Tab(ranking.layout(),      label="▲ RANKING",     tab_id="tab-ranking"),
+            dbc.Tab(map_view.layout(),     label="◉ MAP",         tab_id="tab-map"),
+            dbc.Tab(weights.layout(),      label="⚖ WEIGHTS",     tab_id="tab-weights"),
+            dbc.Tab(markets.layout(),      label="∿ MARKETS",     tab_id="tab-markets"),
+            dbc.Tab(news.layout(),         label="◈ NEWS",        tab_id="tab-news"),
+            dbc.Tab(correlation.layout(),  label="≈ CORRELATION", tab_id="tab-correlation"),
         ], id="main-tabs", active_tab="tab-scorecard", className="term-tabs mt-2"),
     ], fluid=True, className="px-3 pb-4"),
 
-    dcc.Interval(id="clock-interval", interval=1000, n_intervals=0),
+    dcc.Interval(id="clock-interval",        interval=1000,  n_intervals=0),
+    dcc.Interval(id="live-ticker-interval",  interval=30000, n_intervals=0),
+    # Feature 3: store for map → scorecard drill-down
+    dcc.Store(id="map-clicked-country", storage_type="memory"),
 ], style={"minHeight": "100vh"})
 
 register_callbacks(app)

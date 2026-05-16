@@ -112,6 +112,18 @@ def build_ranking_rows(year: int | None = None) -> list[dict]:
 
 def layout() -> html.Div:
     years = get_available_years()
+    min_year = min(years) if years else 2000
+    max_year = max(years) if years else 2024
+    default_year = max_year
+
+    slider_marks = {
+        y: {
+            "label": str(y),
+            "style": {"color": "#f7c548", "fontFamily": "var(--mono)", "fontSize": "10px"},
+        }
+        for y in [2000, 2005, 2010, 2015, 2020, 2024]
+        if min_year <= y <= max_year
+    }
 
     return html.Div([
         dbc.Row([
@@ -126,16 +138,45 @@ def layout() -> html.Div:
                     "fontFamily": "var(--mono)", "fontSize": "9px",
                     "color": "var(--text-dim)", "letterSpacing": "2px",
                 }),
-            ], width=8),
+            ], width=5),
             dbc.Col([
-                dcc.Dropdown(
-                    id="ranking-year-selector",
-                    options=[{"label": str(y), "value": y} for y in reversed(years)],
-                    value=years[-1],
-                    clearable=False,
-                    className="mb-2",
-                )
-            ], width=4),
+                # Play button + animated interval
+                html.Div([
+                    html.Button(
+                        "▶ PLAY",
+                        id="ranking-play-btn",
+                        n_clicks=0,
+                        style={
+                            "background": "transparent",
+                            "border": "1px solid rgba(247,197,72,0.4)",
+                            "color": "var(--gold)",
+                            "fontFamily": "var(--mono)",
+                            "fontSize": "10px",
+                            "letterSpacing": "2px",
+                            "padding": "5px 14px",
+                            "cursor": "pointer",
+                            "marginRight": "12px",
+                            "flexShrink": "0",
+                        },
+                    ),
+                    dcc.Slider(
+                        id="ranking-year-selector",
+                        min=min_year,
+                        max=max_year,
+                        step=1,
+                        value=default_year,
+                        marks=slider_marks,
+                        tooltip={"placement": "bottom", "always_visible": True},
+                        updatemode="drag",
+                    ),
+                    dcc.Interval(
+                        id="ranking-play-interval",
+                        interval=800,
+                        disabled=True,
+                        n_intervals=0,
+                    ),
+                ], style={"display": "flex", "alignItems": "center", "paddingTop": "6px"}),
+            ], width=7),
         ], className="mb-3 mt-2"),
 
         html.Div([
