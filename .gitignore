@@ -1,0 +1,28 @@
+# Данные — не коммитим (большие файлы)
+data/raw/
+data/processed/
+
+# Финальные данные — коммитим (нужны для деплоя)
+!data/final/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+*.egg
+
+# Секреты
+.env
+
+# macOS
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# IDE
+.idea/
+.vscode/
