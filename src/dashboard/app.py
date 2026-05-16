@@ -111,8 +111,31 @@ app.layout = html.Div([
 # ── Callbacks ──────────────────────────────────────────────────────────────────
 register_callbacks(app)
 
+# ── Flask маршруты для React SPA ──────────────────────────────────────────────
+from flask import send_from_directory, redirect
+
+FRONTEND_DIR = str(Path(__file__).parent.parent.parent / "frontend")
+
+@app.server.route("/terminal")
+def serve_terminal():
+    """React SPA — терминальный интерфейс MENA-INDEX."""
+    return send_from_directory(FRONTEND_DIR, "MENA-INDEX.html")
+
+@app.server.route("/terminal/<path:filename>")
+def serve_terminal_static(filename):
+    """Статика для React SPA (jsx, js, png)."""
+    return send_from_directory(FRONTEND_DIR, filename)
+
 # ── Точка входа ────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
+    # Генерируем свежий data.js из реальных CSV при каждом старте
+    try:
+        from src.dashboard.generate_frontend_data import run as gen_data
+        gen_data()
+    except Exception as e:
+        print(f"  ⚠️  Не удалось сгенерировать frontend/data.js: {e}")
+
     print("\n🚀 MENA Investment Index Dashboard")
-    print("   Открой браузер: http://127.0.0.1:8050\n")
+    print("   Аналитик (Dash):  http://127.0.0.1:8050")
+    print("   Терминал (React): http://127.0.0.1:8050/terminal\n")
     app.run(debug=True, port=8050)
