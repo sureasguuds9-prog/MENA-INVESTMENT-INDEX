@@ -120,7 +120,8 @@ def extract_weights(reg_output: dict) -> dict[str, float]:
     Извлекает коэффициенты β и нормирует их в веса.
     wᵢ = |βᵢ| / Σ|βᵢ|
 
-    Если регрессия не дала значимых коэффициентов — возвращает baseline weights.
+    Если R² < 0.3 — смешиваем с baseline (60% baseline + 40% regression).
+    Это защищает от артефактов регрессии на малой выборке.
     """
     result = reg_output["result"]
     factors = reg_output["factors"]
@@ -128,15 +129,14 @@ def extract_weights(reg_output: dict) -> dict[str, float]:
 
     try:
         if is_fallback:
-            # statsmodels result
             params = result.params
             betas = {f: params.get(f, 0.0) for f in factors}
+            r2 = result.rsquared
         else:
-            # linearmodels result
             params = result.params
             betas = {f: params[f] for f in factors if f in params.index}
+            r2 = result.rsquared
 
-        # Берём абсолютные значения
         abs_betas = {f: abs(b) for f, b in betas.items()}
         total = sum(abs_betas.values())
 
@@ -144,17 +144,23 @@ def extract_weights(reg_output: dict) -> dict[str, float]:
             print("  ⚠️  Все коэффициенты = 0, используем baseline weights")
             return dict(BASELINE_WEIGHTS)
 
-        # Нормируем
+        # Нормируем регрессионные веса
         regression_weights = {f: abs_betas[f] / total for f in factors}
-
-        # Добавляем факторы которых нет в регрессии с baseline весом
         for f in FACTOR_COLS:
             if f not in regression_weights:
                 regression_weights[f] = BASELINE_WEIGHTS.get(f, 0.05)
-
-        # Финальная нормировка
         total_all = sum(regression_weights.values())
         regression_weights = {f: w / total_all for f, w in regression_weights.items()}
+
+        # Если R² низкий — смешиваем с baseline (байесовское сжатие к prior)
+        if r2 < 0.3:
+            alpha = 0.6  # 60% baseline, 40% regression
+            print(f"  ℹ️  R²={r2:.3f} < 0.3 — смешиваю baseline ({alpha:.0%}) + regression ({1-alpha:.0%})")
+            mixed = {}
+            for f in FACTOR_COLS:
+                mixed[f] = alpha * BASELINE_WEIGHTS.get(f, 0.05) + (1 - alpha) * regression_weights.get(f, 0.05)
+            total_mixed = sum(mixed.values())
+            return {f: w / total_mixed for f, w in mixed.items()}
 
         return regression_weights
 
