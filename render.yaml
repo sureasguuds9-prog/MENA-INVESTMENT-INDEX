@@ -3,13 +3,9 @@ services:
     name: mena-investment-index
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn wsgi:server --workers 2 --timeout 120 --bind 0.0.0.0:$PORT
+    startCommand: python -m gunicorn wsgi:server --workers 2 --timeout 120 --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
-        value: "3.12"
-      - key: ACLED_EMAIL
-        sync: false   # заполнить вручную в Render dashboard
-      - key: ACLED_KEY
-        sync: false
+        value: "3.11"
     plan: free
     healthCheckPath: /
