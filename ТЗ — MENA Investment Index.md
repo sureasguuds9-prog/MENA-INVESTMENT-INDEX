@@ -1,4 +1,4 @@
-# MENA Investment Climate Index
+# Индекс инвестиционного климата стран MENA
 ## Техническое задание v1.0
 
 > **Позиционирование:** Аналитический продукт уровня EIU Country Risk / Bloomberg CACR — количественная оценка инвестиционного климата 19 стран MENA на основе открытых данных, панельной регрессии и интерактивного дашборда.
@@ -55,7 +55,7 @@ Composite Investment Climate Index (CICI) — числовой индекс от
 
 ## 3. АРХИТЕКТУРА МОДЕЛИ: 7 ФАКТОРОВ
 
-### Composite Index Formula
+### Формула композитного индекса
 ```
 CICI = Σ (wᵢ × Fᵢ_normalized)    где Σwᵢ = 1, Fᵢ ∈ [0, 100]
 ```
@@ -109,7 +109,7 @@ F_normalized_inv = 100 - F_normalized
 
 ## 5. МЕТОДОЛОГИЯ
 
-### 5.1 Панельная регрессия (Fixed Effects)
+### 5.1 Панельная регрессия с фиксированными эффектами
 
 ```python
 # Модель: FDI ~ факторы + country_FE + year_FE
@@ -128,7 +128,7 @@ result = model.fit(cov_type='clustered', cluster_entity=True)
 
 **Цель:** Получить коэффициенты β₁–β₇, нормировать их в веса: `wᵢ = |βᵢ| / Σ|βᵢ|`
 
-### 5.2 Sensitivity Analysis (Monte Carlo)
+### 5.2 Анализ чувствительности методом Монте-Карло
 
 ```python
 # 10 000 итераций с рандомными весами вблизи baseline
@@ -151,7 +151,7 @@ ci_lower = np.percentile(results, 2.5, axis=0)
 ci_upper = np.percentile(results, 97.5, axis=0)
 ```
 
-### 5.3 Backtesting
+### 5.3 Бэктест
 
 - Обучение модели на данных 2000–2018
 - Прогноз FDI притоков 2019–2023
@@ -168,7 +168,7 @@ ci_upper = np.percentile(results, 97.5, axis=0)
 
 ---
 
-## 6. DASHBOARD: 7 МОДУЛЕЙ
+## 6. ДАШБОРД: 7 МОДУЛЕЙ
 
 ### Стек
 ```
@@ -181,39 +181,39 @@ Hosting:   Render / Railway (бесплатный tier для MVP)
 
 ### Модули дашборда
 
-#### M1: Scorecard — страновая карточка
+#### M1: карточка страны
 - Общий CICI score (0–100) с цветовой шкалой
 - Breakdown по 7 факторам (радарная диаграмма)
 - Динамика score за 10 лет (спарклайн)
 - Позиция в рейтинге + изменение за год
 
-#### M2: Ranking Table — сравнительный рейтинг
+#### M2: таблица сравнительного рейтинга
 - Таблица всех 19 стран с сортировкой
 - Цветовая тепловая карта по факторам
 - Фильтр по субрегиону (Gulf / North Africa / Levant)
 - Экспорт в CSV / PDF
 
-#### M3: Time Series — динамика
+#### M3: временной ряд — динамика
 - Линейный график CICI для выбранных стран (мультиселект)
 - Аннотации ключевых событий (Arab Spring 2011, COVID 2020, нефтяные шоки)
 - Сравнение с притоком FDI (secondary axis)
 
-#### M4: Conflict & Stability Map
+#### M4: карта конфликтов и стабильности
 - Интерактивная карта MENA (Plotly choropleth)
 - Цвет = CICI score, размер пузыря = FDI объём
 - Слой: ACLED conflict intensity (heatmap overlay)
 
-#### M5: Custom Weights — пользовательская настройка
+#### M5: пользовательские веса
 - 7 слайдеров для весов F1–F7 (реалтайм пересчёт)
 - Кнопки пресетов: "Энергетический инвестор" / "Tech инвестор" / "Balanced"
 - Instant рейтинг-пересчёт при изменении весов
 
-#### M6: Factor Deep Dive
+#### M6: подробный разбор факторов
 - Drill-down в любой фактор
 - Исходные данные по каждому индикатору
 - Источник, год обновления, ссылка
 
-#### M7: Methodology & Data Quality
+#### M7: методология и качество данных
 - Описание модели
 - Data coverage matrix (страна × индикатор)
 - Confidence intervals по Monte Carlo
@@ -236,7 +236,7 @@ Hosting:   Render / Railway (бесплатный tier для MVP)
 - [ ] Backtesting 2019–2023
 - [ ] Написание методологической секции (LaTeX/PDF)
 
-### Фаза 3: MVP Dashboard (Недели 9–12)
+### Фаза 3: MVP дашборда (недели 9–12)
 - [ ] Dash приложение: M1 Scorecard + M2 Ranking + M4 Map
 - [ ] M5 Custom Weights (слайдеры)
 - [ ] Деплой на Render (публичный URL)
@@ -248,7 +248,7 @@ Hosting:   Render / Railway (бесплатный tier для MVP)
 - [ ] PDF-экспорт country brief (шаблон EIU-style)
 - [ ] GitHub публикация + статья на Medium/Towards Data Science
 
-### Quarterly Updates (после запуска)
+### Ежеквартальные обновления после запуска
 - Q1/Q3: обновление World Bank + IMF данных
 - Q2/Q4: обновление Freedom House + WGI
 - Реалтайм: ACLED (еженедельно через API)
